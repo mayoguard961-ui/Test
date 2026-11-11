@@ -1,0 +1,770 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Inside Logic Gates</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@600;800&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500;700&family=Patrick+Hand&display=swap">
+<style>
+/* Layout: a lab bench. Four stations as tabs: the gate bench (switches, wires, lamp), the laws lab, the K-map board, the algebra steps. A signal that is 1 is always amber, a signal that is 0 is always slate. */
+:root{
+  --bg:#EEF1F4; --panel:#FFFFFF; --ink:#18202B; --muted:#596476; --line:#CDD4DD; --soft:#E3E8EE;
+  --on:#E39B12; --on-s:#FDF0D2; --off:#7A8698; --wire:#9AA5B4;
+  --accent:#2F5DAA; --accent-s:#DCE6F6; --ok:#1C7C47; --ok-s:#DBF1E3; --bad:#B23A30; --bad-s:#F8DFDB;
+  --g1:#2F5DAA; --g2:#C2410C; --g3:#1C7C47; --g4:#9333EA; --g5:#B4235D;
+  --display:"Chivo","Segoe UI",system-ui,sans-serif;
+  --body:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161C; --panel:#1B2129; --ink:#E6EBF1; --muted:#A3AEBD; --line:#333C48; --soft:#252D37;
+  --on:#F5B83D; --on-s:#3D3018; --off:#7E8A9C; --wire:#5B6676;
+  --accent:#8DB0F0; --accent-s:#1F2C45; --ok:#5ED091; --ok-s:#173525; --bad:#F2877B; --bad-s:#43211E;
+  --g1:#8DB0F0; --g2:#FF9A62; --g3:#5ED091; --g4:#C79BFF; --g5:#FF86B8; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161C; --panel:#1B2129; --ink:#E6EBF1; --muted:#A3AEBD; --line:#333C48; --soft:#252D37;
+  --on:#F5B83D; --on-s:#3D3018; --off:#7E8A9C; --wire:#5B6676;
+  --accent:#8DB0F0; --accent-s:#1F2C45; --ok:#5ED091; --ok-s:#173525; --bad:#F2877B; --bad-s:#43211E;
+  --g1:#8DB0F0; --g2:#FF9A62; --g3:#5ED091; --g4:#C79BFF; --g5:#FF86B8; color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:400 18px/1.55 var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.wrap>*{min-width:0;max-width:100%}
+section.wrap{width:100%}
+h1{font:800 clamp(2rem,5vw,3.1rem)/1.05 var(--display);margin:0;letter-spacing:-.02em;text-wrap:balance}
+h2{font:800 clamp(1.3rem,2.6vw,1.75rem)/1.2 var(--display);margin:0;text-wrap:balance}
+h3{font:600 1.08rem/1.3 var(--display);margin:0}
+p{margin:0}
+.lead{color:var(--muted);max-width:66ch;margin-top:8px}
+.muted{color:var(--muted)}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.nb{text-decoration:overline;text-decoration-thickness:2px}
+.nb+.nb{margin-left:.14em}
+.mono,code{font-family:var(--mono);font-size:.92em}
+nav.tabs{display:flex;gap:8px;flex-wrap:wrap}
+nav.tabs button{border:2px solid var(--line);background:var(--panel);border-radius:12px;padding:8px 14px;cursor:pointer;text-align:left;line-height:1.25}
+nav.tabs b{display:block;font:600 1rem var(--display)} nav.tabs span{font-size:.82rem;color:var(--muted)}
+nav.tabs button[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--panel)}
+nav.tabs button[aria-selected="true"] span{color:var(--panel)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.grid2>*{min-width:0}
+@media (max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font-weight:700;padding:8px 15px;border-radius:10px;border:2px solid var(--ink);background:var(--ink);color:var(--panel);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.sm{padding:4px 10px;font-size:.92rem}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.fb{font-weight:700}.fb.ok{color:var(--ok)}.fb.no{color:var(--bad)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{border:2px solid var(--line);background:var(--panel);border-radius:999px;padding:5px 12px;cursor:pointer;font-weight:700;font-size:.95rem}
+.chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-s)}
+.life{border-left:5px solid var(--on);background:var(--on-s);border-radius:0 10px 10px 0;padding:10px 14px}
+.life b{font:600 .78rem var(--display);text-transform:uppercase;letter-spacing:.06em;display:block;color:var(--muted)}
+.note{border-left:5px solid var(--accent);background:var(--accent-s);border-radius:0 10px 10px 0;padding:10px 14px}
+.scroll{overflow-x:auto}
+table.t{border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.t th,table.t td{border:1px solid var(--line);padding:6px 12px;text-align:center;font-family:var(--mono)}
+table.t th{font-family:var(--display);font-size:.9rem;background:var(--soft)}
+td.b1{color:var(--on);font-weight:700} td.b0{color:var(--off)}
+td.diff{background:var(--bad-s)}
+/* bench */
+.bench{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.sw{display:flex;flex-direction:column;gap:14px}
+.sw button{width:92px;white-space:nowrap;border:2px solid var(--line);background:var(--panel);border-radius:12px;padding:6px 8px;cursor:pointer;display:flex;align-items:center;gap:8px;font:700 1rem var(--mono)}
+.sw button .k{width:22px;height:22px;border-radius:50%;background:var(--off);transition:background .2s}
+.sw button[aria-pressed="true"]{border-color:var(--on)} .sw button[aria-pressed="true"] .k{background:var(--on)}
+svg.gate{width:100%;max-width:340px;height:auto;display:block;margin:auto}
+svg.gate .body{fill:var(--panel);stroke:var(--ink);stroke-width:3}
+svg.gate .w{stroke:var(--wire);stroke-width:4;fill:none;transition:stroke .2s}
+svg.gate .w.on{stroke:var(--on)}
+svg.gate .bub{fill:var(--panel);stroke:var(--ink);stroke-width:3}
+svg.gate text{fill:var(--muted);font:600 14px var(--mono)}
+.lamp{width:74px;height:74px;border-radius:50%;border:3px solid var(--line);display:grid;place-items:center;font:700 1.6rem var(--mono);color:var(--off);background:var(--soft);transition:all .2s}
+.lamp.on{background:var(--on);border-color:var(--on);color:#2A1B00;box-shadow:0 0 28px var(--on)}
+@media (prefers-reduced-motion: reduce){.lamp,.sw .k,svg.gate .w{transition:none}}
+.cellbtn{min-width:46px;border:2px dashed var(--line);background:var(--panel);border-radius:8px;cursor:pointer;font:700 1rem var(--mono);padding:2px 8px}
+.cellbtn.set{border-style:solid}
+.cellbtn.right{border-color:var(--ok);background:var(--ok-s)} .cellbtn.wrong{border-color:var(--bad);background:var(--bad-s)}
+/* laws */
+.laws{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px}
+.law{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--panel);display:flex;flex-direction:column;gap:6px}
+.law .f{font:600 1.08rem var(--mono)}
+.law small{color:var(--muted);font-size:.92rem}
+.expr{font:600 1.25rem/1.9 var(--mono);word-break:break-word}
+.br{display:inline-block;border-radius:8px;padding:0 3px;transition:background .3s}
+.br.twin{background:var(--on-s);outline:2px solid var(--on)}
+.br.gone{opacity:.25;text-decoration:line-through}
+input[type=text]{padding:8px 11px;border-radius:9px;border:2px solid var(--line);background:var(--panel);font-family:var(--mono);width:min(100%,24em)}
+/* kmap */
+.kmap{border-collapse:separate;border-spacing:4px;font-family:var(--mono)}
+.kmap th{font:600 .95rem var(--mono);color:var(--muted);padding:2px 6px}
+.kmap th.corner{font-size:.8rem;text-align:right;line-height:1.2}
+.kmap td{padding:0}
+.kc{width:58px;height:54px;border:2px solid var(--line);border-radius:10px;background:var(--panel);cursor:pointer;font:700 1.25rem var(--mono);position:relative}
+.kc small{position:absolute;top:2px;left:5px;font:500 .62rem var(--mono);color:var(--muted)}
+.kc.v1{color:var(--on);border-color:var(--on)}
+.kc.v0{color:var(--off)}
+.kc.right{background:var(--ok-s)} .kc.wrong{background:var(--bad-s);border-color:var(--bad)}
+.dots{position:absolute;bottom:3px;right:4px;display:flex;gap:2px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block}
+.groups{display:flex;flex-direction:column;gap:8px}
+.grp{display:grid;grid-template-columns:14px minmax(0,1fr);gap:10px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;background:var(--panel);text-align:left}
+.grp .sq{width:14px;height:14px;border-radius:4px;margin-top:5px}
+.grp[aria-pressed="true"]{border-color:var(--ink);background:var(--soft)}
+.term{font:700 1.1rem var(--mono)}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;counter-reset:s}
+.steps li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--panel)}
+.steps li::before{counter-increment:s;content:counter(s);width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--panel);display:grid;place-items:center;font:600 .95rem var(--display)}
+.steps .law-n{font:600 .78rem var(--display);text-transform:uppercase;letter-spacing:.05em;color:var(--accent)}
+.steps .mono{font-size:1.08rem;font-weight:600;word-break:break-word}
+.gray{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-family:var(--mono)}
+.gray span{border:2px solid var(--line);border-radius:8px;padding:2px 8px;background:var(--panel)}
+.gray span b{color:var(--on)}
+.signs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.signs{grid-template-columns:minmax(0,1fr)}}
+.signs>div{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;align-items:start;background:var(--soft);border-radius:12px;padding:10px 12px}
+.signs .big{font:800 2rem/1 var(--mono);text-align:center;color:var(--accent)}
+.lesson{border:2px solid var(--ink)}
+.lt{font-size:1.3rem}
+.lx{font-size:1.15rem;max-width:70ch;min-height:3em}
+.big-expr{font-size:1.6rem;line-height:2.1;background:var(--soft);border-radius:12px;padding:10px 14px}
+.br.sorted{background:var(--accent-s);outline:2px solid var(--accent)}
+.br.t1{background:var(--on-s);outline:2px solid var(--on)}
+.br.t2{background:var(--ok-s);outline:2px solid var(--ok)}
+.arrow-sw{color:var(--accent);font-weight:800}
+details.card summary{cursor:pointer;font-family:var(--display)}
+table.t tr.pick td{background:var(--accent-s)}
+table.t tr[data-row]{cursor:pointer}
+.kc.hot{outline:4px solid var(--accent);outline-offset:1px}
+th.hot{color:var(--on)!important;background:var(--on-s);border-radius:6px}
+.coltest td.out{opacity:.35;text-decoration:line-through}
+.coltest td.keep{background:var(--ok-s);font-weight:700}
+.coltest th{font-size:.85rem}
+.verdict{font:700 1.3rem var(--mono)}
+.actbox{border:2px dashed var(--accent);border-radius:12px;padding:10px 14px;background:var(--panel);font-size:1.05rem}
+.actbox>b{font:600 .8rem var(--display);text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:block;margin-bottom:4px}
+.actbox ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px}
+.actbox .now{background:var(--on-s);border-radius:6px;padding:0 4px}
+.actbox .bitrow{font:600 1.05rem var(--mono);letter-spacing:.08em}
+.actbox .bitrow b{color:var(--on);text-decoration:underline}
+.stages{display:flex;gap:8px;flex-wrap:wrap}
+.stages span{border:2px solid var(--line);border-radius:999px;padding:4px 12px;font-weight:700}
+.stages b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--panel);font-size:.8rem;margin-right:6px}
+.stagepill{font:600 .82rem var(--display);text-transform:uppercase;letter-spacing:.06em;background:var(--ink);color:var(--panel);border-radius:999px;padding:3px 12px}
+.kc.cur{outline:4px solid var(--accent);outline-offset:1px}
+.kc.bad{outline:4px solid var(--bad);outline-offset:1px}
+.kc.fresh{animation:pop .6s ease}
+@keyframes pop{0%{transform:scale(1.25);background:var(--on-s)}100%{transform:scale(1)}}
+table.t tr.now td{background:var(--on-s)}
+.legend2{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.95rem}
+.legend2 span b{font-family:var(--mono)}
+@media (prefers-reduced-motion: reduce){.kc.fresh{animation:none}}
+.scview{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.scview>*{min-width:0}
+.outcol{display:flex;flex-direction:column;gap:3px}
+.outcol div{display:grid;grid-template-columns:2.2em 2em;gap:6px;align-items:center;font-family:var(--mono);border-radius:6px;padding:1px 6px}
+.blkrow{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.blkrow .lab{width:5.5em;font:600 .85rem var(--display);color:var(--muted)}
+.bx{width:52px;height:50px;border-radius:10px;border:2px solid var(--line);display:grid;place-items:center;font:700 1.25rem var(--mono);position:relative;background:var(--panel)}
+.bx small{position:absolute;top:1px;left:4px;font:500 .62rem var(--mono);color:var(--muted)}
+.bx.one{color:var(--on);border-color:var(--on)}
+.bx.sw{outline:4px solid var(--g4);outline-offset:1px}
+.swapnote{font:700 1rem var(--display);color:var(--g4)}
+.cheat{border:2px solid var(--on);background:var(--on-s);border-radius:12px;padding:10px 14px}
+.cheat>b{font:600 .8rem var(--display);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px}
+.cheat ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px}
+.paper{--rule:color-mix(in srgb,var(--accent) 22%,transparent);background:var(--panel);background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 35px,var(--rule) 35px,var(--rule) 36px);border:1px solid var(--line);border-left:4px solid color-mix(in srgb,var(--bad) 60%,transparent);border-radius:6px;padding:4px 16px 12px 22px;font:400 1.3rem/36px "Patrick Hand","Comic Sans MS",cursive;overflow-x:auto}
+.paper .pl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:baseline}
+.paper .pl .plaw{color:var(--accent);font-size:1.05rem;white-space:nowrap}
+.paper .st{font-weight:700;text-decoration:underline;text-underline-offset:4px}
+.paper .fin{border:2px solid var(--ok);border-radius:6px;padding:0 8px;display:inline-block;line-height:32px}
+.paper table.kmap{font-family:inherit;margin:4px 0}
+.paper table.kmap td,.paper table.kmap th{border:1.5px solid var(--ink);width:44px;height:36px;text-align:center;font:400 1.2rem "Patrick Hand",cursive}
+.paper table.kmap{border-collapse:collapse}
+@media (max-width:560px){.paper .pl{grid-template-columns:minmax(0,1fr)}.paper .pl .plaw{white-space:normal}}
+.intro{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:860px){.intro{grid-template-columns:minmax(0,1fr)}}
+.think{font-style:italic;border-left:5px solid var(--accent);padding:6px 12px;background:var(--soft);border-radius:0 10px 10px 0;margin:0}
+</style>
+<div class="wrap">
+  <header>
+    <h1>Inside Logic Gates</h1>
+    <p class="lead">CST131 / CCA102 Computer Organisation, Tutorial 4 (Digital Logic 1). One tab per tutorial question: first an everyday situation and the method, then a live demo you can play with step by step.</p>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Tutorial 4 questions" id="tabs"></nav>
+  <div class="card">
+    <h2 id="qTitle"></h2>
+    <div class="intro">
+      <div class="life"><b>In real life</b><div id="qLife"></div></div>
+      <div class="note"><b>The method</b><ol id="qHow" style="margin:4px 0 0;padding-left:22px"></ol></div>
+    </div>
+    <p class="think" id="qThink"></p>
+  </div>
+
+  <!-- STATION 1 -->
+  <section id="s1" class="wrap" style="gap:16px">
+    <div class="card">
+      <h2>The gate bench</h2>
+      <p class="muted">Pick a gate. Click the switches A and B. A wire that carries 1 turns amber, and the lamp lights when the output is 1. A small circle on a wire means NOT: the bit is flipped as it passes.</p>
+      <div class="chips" id="gatePick" role="group" aria-label="Gates"></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3 id="gName"></h3>
+        <div class="bench">
+          <div class="sw" id="sw"></div>
+          <div id="gSvg" style="min-width:0"></div>
+          <div class="lamp" id="lamp">0</div>
+        </div>
+        <p class="mono muted" id="gRule" style="text-align:center"></p>
+        <div class="life" id="gLife"></div>
+      </div>
+      <div class="card">
+        <h3>Fill the truth table yourself</h3>
+        <p class="muted">Try each line on the bench, then click the output cell to write 0 or 1.</p>
+        <div class="scroll"><table class="t" id="tt"></table></div>
+        <div class="row"><button class="btn" id="ttCheck">Check</button><span class="fb" id="ttFb"></span></div>
+        <div id="mystery" hidden class="note">
+          <p><b>Detective question.</b> This gate has the same truth table as one of the normal gates. Which one?</p>
+          <div class="row" style="margin-top:8px"><select id="myPick" aria-label="Which gate"><option value="">choose</option><option>AND</option><option>OR</option><option>NAND</option><option>NOR</option><option>XOR</option><option>XNOR</option></select><button class="btn sm" id="myCheck">Check</button><span class="fb" id="myFb"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATION 2 -->
+  <section id="s2" class="wrap" style="gap:16px" hidden>
+    <div class="card">
+      <h2>Tidy an expression in 3 moves</h2>
+      <p class="muted">Three signs to know first:</p>
+      <div class="signs">
+        <div><span class="big">+</span><p><b>OR</b>: at least one is true. “tea + coffee” = you drink tea, or coffee, or both.</p></div>
+        <div><span class="big">·</span><p><b>AND</b>: both are true. Two things written side by side, like <span class="mono">PQ</span>, also mean AND. Brackets next to each other are joined by AND.</p></div>
+        <div><span class="big"><span class="nb">P</span></span><p><b>NOT</b>: the bar means the opposite. <span class="mono"><span class="nb">P</span></span> is 1 when P is 0. The bar stays glued to its letter.</p></div>
+      </div>
+    </div>
+    <div class="card lesson">
+      <div class="row" style="justify-content:space-between"><div class="chips" id="tEx" role="group" aria-label="Examples"></div><span class="muted" id="tStepN"></span></div>
+      <div id="tStory" class="life"></div>
+      <h3 id="tTitle" class="lt"></h3>
+      <div class="expr big-expr" id="tShow"></div>
+      <p id="tText" class="lx"></p>
+      <div class="actbox"><b>What we do, one by one</b><ol id="tAct"></ol></div>
+      <div class="row"><button class="btn ghost" id="tBack">◀ Back</button><button class="btn" id="tNext">Next ▶</button></div>
+    </div>
+    <div class="card paperwrap"><div class="row" style="justify-content:space-between"><h2>✍ On your exam paper</h2><button class="btn ghost sm" id="pp2Btn">Show the model answer</button></div><p class="muted">Write your answer in numbered steps like this. Put the law you used on the right: it shows the examiner your method.</p><div class="paper" id="pp2" hidden></div></div>
+    <div class="card">
+      <h2>Your turn</h2>
+      <p class="muted">Do the 3 moves on paper, type your answer, then check. Type NOT as an apostrophe: <code>P'</code> means <span class="mono"><span class="nb">P</span></span>.</p>
+      <div class="expr" id="tidyExpr"></div>
+      <div class="row"><input type="text" id="tidyAns" placeholder="your tidy answer"><button class="btn" id="tidyCheck">Check</button><button class="btn ghost" id="tidySolve">Show the 3 moves</button><button class="btn ghost" id="tidyNew">New expression</button></div>
+      <p class="fb" id="tidyFb"></p>
+      <p class="muted" id="tidyMsg"></p>
+    </div>
+    <details class="card">
+      <summary><b>All the laws (for reference)</b></summary>
+      <div class="laws" id="laws" style="margin-top:12px"></div>
+    </details>
+    <details class="card">
+      <summary><b>Tool: are two expressions the same?</b></summary>
+      <p class="muted">The page tries every combination of 0 and 1. <code>(AB)'</code> means NOT of AB.</p>
+      <div class="row"><label for="ex1" class="muted" style="width:2em">1</label><input type="text" id="ex1" value="P(P+Q)"></div>
+      <div class="row"><label for="ex2" class="muted" style="width:2em">2</label><input type="text" id="ex2" value="P"></div>
+      <div class="row"><button class="btn" id="cmp">Compare</button><span class="fb" id="cmpFb"></span></div>
+      <div class="scroll"><table class="t" id="cmpT"></table></div>
+    </details>
+  </section>
+
+  <!-- STATION 3 -->
+  <section id="s3" class="wrap" style="gap:16px" hidden>
+    <div class="card">
+      <h2>The K-map method in 4 stages</h2>
+      <div class="stages"><span><b>1</b> Draw the boxes</span><span><b>2</b> Copy the 1s</span><span><b>3</b> Circle groups</span><span><b>4</b> Read each group</span></div>
+      <p class="muted">Pick an example, then press Next (or Play) and watch every small action. Start with the real-life one.</p>
+      <div class="chips" id="lEx" role="group" aria-label="Examples"></div>
+    </div>
+    <div class="card lesson" id="scCard">
+      <div class="row" style="justify-content:space-between"><span class="stagepill" style="background:var(--on);color:#2A1B00">The fast way · 3 shortcuts</span><span class="muted" id="scStepN"></span></div>
+      <h2 id="scTitle"></h2>
+      <div class="actbox" id="scAct"></div>
+      <div id="scView" class="scview"></div>
+      <div class="row"><button class="btn ghost" id="scBack">◀ Back</button><button class="btn" id="scNext">Next ▶</button></div>
+      <div class="cheat"><b>Remember</b><ol><li><b>Fill:</b> cut the Out column into blocks of 4, lay each block as a row, swap the 3rd and 4th box. (4 inputs: also swap the 3rd and 4th row.)</li><li><b>Circle:</b> biggest first: 8, then 4, then 2, then 1. Edges touch.</li><li><b>Read:</b> look at the labels of the group. Same digit → keep the letter (1 = A, 0 = <span class="nb">A</span>). Different digits → delete the letter.</li></ol></div>
+    </div>
+    <div class="card paperwrap"><div class="row" style="justify-content:space-between"><h2>✍ On your exam paper</h2><button class="btn ghost sm" id="pp3Btn">Show the model answer</button></div><p class="muted">Write your answer in numbered steps like this. Put the law you used on the right: it shows the examiner your method.</p><div class="paper" id="pp3" hidden></div></div>
+    <p class="muted" style="text-align:center">Want to see every single action? The slow, detailed version is below.</p>
+    <div class="card lesson" id="lessonCard">
+      <div class="row" style="justify-content:space-between"><span class="stagepill" id="lStage"></span><span class="muted" id="lStepN"></span></div>
+      <h2 id="lTitle"></h2>
+      <div class="actbox" id="lAct"></div>
+      <div class="grid2">
+        <div><h3 style="margin-bottom:6px">Truth table</h3><div class="scroll"><table class="t" id="lTT"></table></div></div>
+        <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+          <div><h3 style="margin-bottom:6px">K-map</h3><div class="scroll"><table class="kmap" id="lMap"></table></div></div>
+          <div id="lCol"></div>
+        </div>
+      </div>
+      <div class="row"><button class="btn ghost" id="lBack">◀ Back</button><button class="btn" id="lNext">Next ▶</button><button class="btn ghost" id="lPlay">▶ Play</button><input type="range" id="lSeek" min="0" max="1" value="0" aria-label="Go to step" style="flex:1;min-width:120px"></div>
+    </div>
+    <div class="card">
+      <h2>Your turn</h2>
+      <p class="muted">A new truth table each time. Fill the K-map, find the groups, type your answer.</p>
+      <div class="row">
+        <div class="chips" role="group" aria-label="Size"><button data-n="3" aria-pressed="true">3 inputs</button><button data-n="4" aria-pressed="false">4 inputs</button></div>
+        <button class="btn ghost" id="kNew">New truth table</button>
+        <label class="row muted" style="gap:6px"><input type="checkbox" id="kNum" checked> show line numbers in the boxes</label>
+      </div>
+      <div class="grid2">
+        <div class="scroll"><table class="t" id="kTT"></table></div>
+        <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+          <p class="muted">Click each box to write the output from the table.</p>
+          <div class="scroll"><table class="kmap" id="kMap"></table></div>
+          <div class="row"><button class="btn" id="kCheck">Check my K-map</button><button class="btn ghost" id="kFill">Fill it for me</button></div>
+          <p class="fb" id="kFb"></p>
+        </div>
+      </div>
+      <div class="row"><label for="kAns" class="muted">Your answer</label><input type="text" id="kAns" placeholder="e.g. A'C + BC"><button class="btn" id="kAnsCheck">Check</button><button class="btn ghost" id="kShow">Show the groups</button></div>
+      <p class="fb" id="kAnsFb"></p>
+      <div class="groups" id="kGroups"></div>
+      <p class="term" id="kResult"></p>
+    </div>
+  </section>
+
+  <!-- STATION 4 -->
+  <section id="s4" class="wrap" style="gap:16px" hidden>
+    <div class="card">
+      <h2>Simplify with algebra, then check with a K-map</h2>
+      <p class="muted">The key move is the combining rule: when two terms are the same except for one letter, that letter disappears. <span class="mono">X<span class="nb">Y</span> + XY = X(<span class="nb">Y</span> + Y) = X · 1 = X</span>. When one term can pair with two others, copy it first (X = X + X).</p>
+      <div class="chips" id="exPick" role="group" aria-label="Examples"></div>
+    </div>
+    <div class="card">
+      <div class="actbox"><b>The method in 4 actions</b><ol><li>Find two terms that are the same except for ONE letter.</li><li>If one term is needed by two partners, copy it (X = X + X).</li><li>Take out what the pair has in common (distributive law).</li><li>The letter and its opposite make 1 (X̄ + X = 1), so that letter disappears.</li></ol></div>
+      <div class="life" id="exStory"></div>
+      <p class="expr" id="exStart"></p>
+      <ol class="steps" id="exSteps"></ol>
+      <div class="row"><button class="btn" id="exNext">Next step</button><button class="btn ghost" id="exAll">Show all</button><button class="btn ghost" id="exK">See it on the K-map</button></div>
+    </div>
+    <div class="card paperwrap"><div class="row" style="justify-content:space-between"><h2>✍ On your exam paper</h2><button class="btn ghost sm" id="pp4Btn">Show the model answer</button></div><p class="muted">Write your answer in numbered steps like this. Put the law you used on the right: it shows the examiner your method.</p><div class="paper" id="pp4" hidden></div></div>
+  </section>
+
+  <p class="muted" style="font-size:.9rem">Q2 works through the tutorial’s own expressions. The other tabs use their own examples: use exactly the same method on the tutorial, and check your answers with the comparison tool at the bottom of Q2.</p>
+</div>
+<script>
+// ---------- logic core ----------
+const GRAY2=[0,1,3,2];
+function cubesOf(n){const out=[];const rec=(p)=>{if(p.length===n){out.push(p);return}for(const c of '01-')rec(p+c)};rec('');return out}
+function cubeMins(c){let m=[0];for(const ch of c){m=m.flatMap(x=>ch==='-'?[x*2,x*2+1]:[x*2+(+ch)])}return m}
+function contains(big,small){for(let i=0;i<big.length;i++)if(big[i]!=='-'&&big[i]!==small[i])return false;return true}
+function solveSOP(n,ones){const S=new Set(ones);if(!ones.length)return [];
+  const imps=cubesOf(n).filter(c=>cubeMins(c).every(m=>S.has(m)));
+  const primes=imps.filter(c=>!imps.some(d=>d!==c&&contains(d,c)));
+  const lits=c=>[...c].filter(x=>x!=='-').length;
+  // essential first, then brute force the rest
+  const ess=[];for(const m of ones){const cov=primes.filter(p=>cubeMins(p).includes(m));if(cov.length===1&&!ess.includes(cov[0]))ess.push(cov[0])}
+  const covered=new Set(ess.flatMap(cubeMins));const left=ones.filter(m=>!covered.has(m));
+  const rest=primes.filter(p=>!ess.includes(p));let best=null;
+  if(!left.length)best=[];else{for(let mask=1;mask<(1<<rest.length);mask++){const pick=rest.filter((_,i)=>mask>>i&1);const cv=new Set(pick.flatMap(cubeMins));if(!left.every(m=>cv.has(m)))continue;
+    const cost=[pick.length,pick.reduce((a,c)=>a+lits(c),0)];if(!best||cost[0]<best.cost[0]||(cost[0]===best.cost[0]&&cost[1]<best.cost[1]))best={pick,cost}}best=best.pick}
+  return [...ess,...best].sort((a,b)=>lits(a)-lits(b)||(a<b?-1:1))}
+function termHTML(c,V){if(!c.includes('0')&&!c.includes('1'))return '1';return [...c].map((ch,i)=>ch==='-'?'':ch==='1'?V[i]:`<span class="nb">${V[i]}</span>`).join('')}
+function sopHTML(cubes,V){return cubes.length?cubes.map(c=>termHTML(c,V)).join(' + '):'0'}
+// ---------- expression parser: + OR, juxtaposition or * or . AND, ' or ~ or ! NOT ----------
+function parseExpr(src){let s=src.replace(/\s+/g,'').replace(/[·•×]/g,'*').replace(/[’`]/g,"'"),i=0;
+  const peek=()=>s[i];const vars=new Set();
+  function expr(){let t=[term()];while(peek()==='+'){i++;t.push(term())}return t.length===1?t[0]:{op:'or',k:t}}
+  function term(){let f=[factor()];while(i<s.length&&(peek()==='*'||peek()==='.'||/[A-Za-z(~!01]/.test(peek()))){if(peek()==='*'||peek()==='.')i++;f.push(factor())}return f.length===1?f[0]:{op:'and',k:f}}
+  function factor(){let neg=0;while(peek()==='~'||peek()==='!'){neg++;i++}let a=atom();while(peek()==="'"){a={op:'not',k:[a]};i++}while(neg--)a={op:'not',k:[a]};return a}
+  function atom(){const c=peek();if(c==='('){i++;const e=expr();if(peek()!==')')throw Error('missing )');i++;return e}
+    if(c==='0'||c==='1'){i++;return {op:'c',v:+c}}if(c&&/[A-Za-z]/.test(c)){i++;vars.add(c.toUpperCase());return {op:'v',n:c.toUpperCase()}}throw Error(c?`unexpected “${c}”`:'expression ends too early')}
+  if(!s)throw Error('empty');const e=expr();if(i<s.length)throw Error(`unexpected “${s[i]}”`);return {e,vars:[...vars].sort()}}
+function evalE(e,env){switch(e.op){case 'c':return e.v;case 'v':return env[e.n]?1:0;case 'not':return 1-evalE(e.k[0],env);case 'and':return e.k.every(x=>evalE(x,env))?1:0;case 'or':return e.k.some(x=>evalE(x,env))?1:0}}
+function sameFn(a,b,extraVars=[]){const V=[...new Set([...a.vars,...b.vars,...extraVars])].sort();for(let m=0;m<(1<<V.length);m++){const env={};V.forEach((v,j)=>env[v]=(m>>(V.length-1-j))&1);if(evalE(a.e,env)!==evalE(b.e,env))return {ok:false,env}}return {ok:true}}
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const store={get(k,d){try{const v=localStorage.getItem('lg-'+k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('lg-'+k,JSON.stringify(v))}catch(e){}}};
+const nb=x=>`<span class="nb">${x}</span>`;
+// ---------- tabs ----------
+const QS=[
+ {tab:'Q1',sub:'Gates and truth tables',title:'Name each gate, fill its truth table',show:['s1'],
+  life:'A car starts only if the key is turned <strong>AND</strong> your foot is on the brake. A doorbell rings if the front <strong>OR</strong> the back button is pressed. The staircase light changes when either switch is flipped (<strong>XOR</strong>).',
+  how:['Look at the body: flat back + round front = AND, curved shield = OR, extra curve = XOR, triangle = NOT.','A small circle on a wire = NOT on that wire (before the input, or after the output).','Try the 4 combinations of A and B on the bench, then write each output in the table.'],
+  think:'Two gates of the tutorial have circles on their INPUTS. Which normal gate do they behave like? The two mystery gates below will tell you.'},
+ {tab:'Q2',sub:'Commutative law',title:'Simplify with the commutative law',show:['s2'],
+  life:'A shopping list: “milk, bread” and “bread, milk” are the same list. If “milk” is written twice, you still buy one milk.',
+  how:['Move 1 · Commutative law: write the letters of every bracket in A, B, C order.','Move 2 · Find the twins: same letters, same bars.','Move 3 · Idempotent law: X · X = X and X + X = X, so keep only one.'],
+  think:'Follow the 3 moves on each tutorial expression. For b) and d), can another law make the answer even shorter?'},
+ {tab:'Q3',sub:'K-map, 3 inputs',title:'From a 3-input truth table to a K-map',show:['s3'],n:3,
+  life:'Between two classes, do you go to the canteen? Three yes/no questions decide it. The K-map turns your long list of cases into one short rule.',
+  how:['8 lines → 8 boxes. Rows: A. Columns: BC in the order 00, 01, 11, 10.','Copy the outputs: cut the Out column in blocks of 4, swap the 3rd and 4th box.','Circle the 1s in groups of 1, 2, 4 or 8, biggest first. Edges touch.','Read each group: a letter that changes disappears.'],
+  think:'Draw the K-map of the tutorial table. Which 1s can share a group? Is every 1 inside a group?'},
+ {tab:'Q4',sub:'K-map, 4 inputs',title:'From a 4-input truth table to a K-map',show:['s3'],n:4,
+  life:'Lecture hall lights: A = weekday, B = daytime, C = a class is booked, D = people are inside. The lights should be on in some of the 16 cases. A 4×4 K-map finds the short rule.',
+  how:['16 lines → 16 boxes. Rows: AB, columns: CD, both in the order 00, 01, 11, 10.','Fill: blocks of 4 become rows, swap the 3rd and 4th box of each row, then swap the 3rd and 4th row.','Look for groups of 8 and 4 first (full rows, full columns, 2×2 squares, the 4 corners).','Read each group with “same or different?”.'],
+  think:'In the tutorial table, find a group of 4 first. Which 1 is left alone, and which neighbour can it join?'},
+ {tab:'Q5',sub:'Simplify two ways',title:'Simplify with algebra, then with a K-map',show:['s4'],
+  life:'You will go to the canteen if (not hungry, friend asks, no class soon) OR (hungry, no friend, no class soon) OR (hungry, friend asks, no class soon). Can you say it in fewer words?',
+  how:['Find two terms that are the same except for ONE letter.','If one term has two partners, copy it (X = X + X).','Take out the common part, then X̄ + X = 1 removes the letter.','Check with a K-map: you must get the same answer.'],
+  think:'Do the tutorial expression with both methods. Which term is used twice? Do the algebra and the K-map give the same answer?'}];
+$('#tabs').innerHTML=QS.map((q,i)=>`<button role="tab" data-tab="${i}" aria-selected="false"><b>${q.tab}</b><span>${q.sub}</span></button>`).join('');
+$$('[data-tab]').forEach(b=>b.onclick=()=>tab(+b.dataset.tab));
+let LN=0;
+function tab(i){if(typeof i==='string')i=({s1:0,s2:1,s3:LE&&LE.n===4?3:2,s4:4})[i]??0;i=Math.min(Math.max(0,i|0),QS.length-1);const q=QS[i];
+  $$('[data-tab]').forEach(b=>b.setAttribute('aria-selected',+b.dataset.tab===i));['s1','s2','s3','s4'].forEach(t=>$('#'+t).hidden=!q.show.includes(t));
+  $('#qTitle').textContent=`${q.tab} · ${q.title}`;$('#qLife').innerHTML=q.life;$('#qHow').innerHTML=q.how.map(x=>`<li>${x}</li>`).join('');$('#qThink').textContent=q.think;
+  if(q.n&&typeof LEX!=='undefined'){LN=q.n;if(!LE||LE.n!==q.n){LE=LEX.find(e=>e.n===q.n);lS=0;sS=0;lStop();buildL();drawL();drawSC()}drawLexChips();if(K.n!==q.n)newK(q.n)}
+  store.set('q',i)}
+// ---------- station 1: gates ----------
+const GATES=[
+ {id:'and',name:'AND',body:'and',f:(a,b)=>a&b,rule:'Output = A · B',life:'A car starts only if the key is turned AND your foot is on the brake.'},
+ {id:'or',name:'OR',body:'or',f:(a,b)=>a|b,rule:'Output = A + B',life:'The doorbell rings if someone presses the front button OR the back button (or both).'},
+ {id:'not',name:'NOT',body:'not',outB:true,one:true,f:a=>1-a,rule:'Output = Ā',life:'A street lamp turns on when it is NOT daylight.'},
+ {id:'nand',name:'NAND',body:'and',outB:true,f:(a,b)=>1-(a&b),rule:'Output = NOT (A · B)',life:'In a two-seat car, the seat-belt warning stays on unless BOTH belts are clicked.'},
+ {id:'nor',name:'NOR',body:'or',outB:true,f:(a,b)=>1-(a|b),rule:'Output = NOT (A + B)',life:'The “room is empty” light: on only when neither the motion sensor nor the door sensor sees anything.'},
+ {id:'xor',name:'XOR',body:'xor',f:(a,b)=>a^b,rule:'Output = 1 when A and B are different',life:'The staircase light: one switch downstairs, one upstairs. Flip either one and the light changes.'},
+ {id:'xnor',name:'XNOR',body:'xor',outB:true,f:(a,b)=>1-(a^b),rule:'Output = 1 when A and B are the same',life:'A quiz app says “match!” when both players chose the same answer.'},
+ {id:'m1',name:'Mystery gate 1',body:'and',inB:true,mystery:'NOR',f:(a,b)=>(1-a)&(1-b),rule:'Flip A, flip B, then AND them',life:'An AND body, but each input passes through a small NOT circle first. Watch the lamp carefully.'},
+ {id:'m2',name:'Mystery gate 2',body:'or',inB:true,mystery:'NAND',f:(a,b)=>(1-a)|(1-b),rule:'Flip A, flip B, then OR them',life:'An OR body with a NOT circle on each input. Which normal gate gives the same lamp?'}];
+let G=GATES[0],A=0,B=0;const ttState={};
+$('#gatePick').innerHTML=GATES.map((g,i)=>`<button data-g="${i}" aria-pressed="${i===0}">${g.name}</button>`).join('');
+$$('[data-g]').forEach(b=>b.onclick=()=>{G=GATES[+b.dataset.g];$$('[data-g]').forEach(x=>x.setAttribute('aria-pressed',x===b));drawGate();drawTT()});
+function gateSVG(g,a,b,out){const W=(on)=>`class="w${on?' on':''}"`;let s='';
+  const end=g.body==='not'?140:150;
+  if(g.one){s+=`<line ${W(a)} x1="18" y1="60" x2="70" y2="60"/><text x="2" y="65">A</text>`}
+  else{const x0=g.body==='and'?70:g.body==='or'?72:62;const xe=g.inB?x0-12:x0;
+    s+=`<line ${W(a)} x1="18" y1="40" x2="${xe}" y2="40"/><line ${W(b)} x1="18" y1="80" x2="${xe}" y2="80"/><text x="2" y="45">A</text><text x="2" y="85">B</text>`;
+    if(g.inB)s+=`<circle class="bub" cx="${x0-6}" cy="40" r="6"/><circle class="bub" cx="${x0-6}" cy="80" r="6"/>`}
+  if(g.body==='and')s+=`<path class="body" d="M70,20 H110 A40,40 0 0 1 110,100 H70 Z"/>`;
+  if(g.body==='or'||g.body==='xor')s+=`<path class="body" d="M65,20 Q105,20 150,60 Q105,100 65,100 Q85,60 65,20 Z"/>`;
+  if(g.body==='xor')s+=`<path class="body" style="fill:none" d="M53,20 Q73,60 53,100"/>`;
+  if(g.body==='not')s+=`<path class="body" d="M70,25 L140,60 L70,95 Z"/>`;
+  const ox=g.outB?end+14:end;if(g.outB)s+=`<circle class="bub" cx="${end+7}" cy="60" r="7"/>`;
+  s+=`<line ${W(out)} x1="${ox}" y1="60" x2="232" y2="60"/>`;
+  return `<svg class="gate" viewBox="0 0 240 120" role="img" aria-label="${esc(g.name)} gate, output ${out}">${s}</svg>`}
+function drawGate(){const out=G.one?G.f(A):G.f(A,B);
+  $('#sw').innerHTML=(G.one?['A']:['A','B']).map(k=>`<button data-sw="${k}" aria-pressed="${(k==='A'?A:B)===1}"><span class="k"></span>${k} = ${k==='A'?A:B}</button>`).join('');
+  $$('[data-sw]').forEach(b=>b.onclick=()=>{if(b.dataset.sw==='A')A=1-A;else B=1-B;drawGate()});
+  $('#gSvg').innerHTML=gateSVG(G,A,B,out);$('#lamp').textContent=out;$('#lamp').classList.toggle('on',out===1);
+  $('#gName').textContent=G.name+(G.mystery?' (AND/OR body with input circles)':' gate');$('#gRule').textContent=G.rule;
+  $('#gLife').innerHTML=`<b>${G.mystery?'Look closely':'In real life'}</b>${esc(G.life)}`}
+function rowsOf(g){return g.one?[[0],[1]]:[[0,0],[0,1],[1,0],[1,1]]}
+function drawTT(){const st=ttState[G.id]||(ttState[G.id]={});const R=rowsOf(G);
+  $('#tt').innerHTML=`<tr>${(G.one?['A']:['A','B']).map(h=>`<th>${h}</th>`).join('')}<th>Output</th></tr>`+R.map((r,i)=>`<tr>${r.map(v=>`<td class="b${v}">${v}</td>`).join('')}<td><button class="cellbtn${st[i]!==undefined?' set':''}" data-tt="${i}" aria-label="output for line ${i+1}">${st[i]??'?'}</button></td></tr>`).join('');
+  $$('[data-tt]').forEach(b=>b.onclick=()=>{const i=+b.dataset.tt;st[i]=st[i]===0?1:0;$('#ttFb').textContent='';drawTT()});
+  $('#ttFb').textContent='';$('#mystery').hidden=true;$('#myFb').textContent='';$('#myPick').value=''}
+$('#ttCheck').onclick=()=>{const st=ttState[G.id]||{};const R=rowsOf(G);let ok=0;
+  R.forEach((r,i)=>{const want=G.one?G.f(r[0]):G.f(r[0],r[1]);const b=$(`[data-tt="${i}"]`);const g=st[i]===want;b.classList.toggle('right',g);b.classList.toggle('wrong',!g);if(g)ok++});
+  const all=ok===R.length;$('#ttFb').className='fb '+(all?'ok':'no');$('#ttFb').textContent=all?'All correct.':`${ok} of ${R.length} correct. Test the red lines on the bench.`;
+  if(all&&G.mystery)$('#mystery').hidden=false};
+$('#myCheck').onclick=()=>{const v=$('#myPick').value;if(!v)return;const ok=v===G.mystery;$('#myFb').className='fb '+(ok?'ok':'no');
+  $('#myFb').textContent=ok?`Yes. Its table is exactly the ${G.mystery} table. This is De Morgan's law (see the laws in Q2).`:'Not this one. Compare your table with the tables of the normal gates.'};
+
+// ---------- station 2: tidy lesson ----------
+const LAWS=[
+ ['Commutative','A + B = B + A<br>A · B = B · A','The order does not matter.','Tea with milk is the same drink as milk with tea.'],
+ ['Associative','(A + B) + C = A + (B + C)','The brackets can move when all the signs are the same.','Adding three prices: the order you add them in does not change the total.'],
+ ['Idempotent','A + A = A<br>A · A = A','Saying the same thing twice adds nothing.','“The door is open, the door is open” does not make it more open.'],
+ ['Identity','A + 0 = A<br>A · 1 = A','0 in an OR and 1 in an AND change nothing.','Asking “key turned AND true?” is the same as asking “key turned?”.'],
+ ['Null','A + 1 = 1<br>A · 0 = 0','1 wins an OR, 0 wins an AND.','If the power is cut (0), no AND with it can be 1.'],
+ ['Complement',`A + ${nb('A')} = 1<br>A · ${nb('A')} = 0`,'A thing and its opposite.','“It is raining OR it is not raining” is always true.'],
+ ['Absorption','A + A · B = A<br>A · (A + B) = A','The bigger term swallows the smaller one.','“Students enter free” already covers “students with a hat enter free”.'],
+ ['Distributive','A · (B + C) = A·B + A·C<br>A + B·C = (A + B)(A + C)','Take out a common letter, or multiply in.','“Tea with (sugar or milk)” = “tea with sugar” or “tea with milk”.'],
+ ['Combining',`A·B + A·${nb('B')} = A`,'Two terms that differ in one letter: that letter disappears.','The base of every K-map group.'],
+ ['De Morgan',`${nb('A · B')} = ${nb('A')} + ${nb('B')}<br>${nb('A + B')} = ${nb('A')} · ${nb('B')}`,'Break the long bar, and flip the sign.','“Not (rich and famous)” = “not rich, or not famous”.']];
+$('#laws').innerHTML=LAWS.map(([n,f,d,l])=>`<div class="law"><h3>${n}</h3><div class="f">${f}</div><p>${d}</p><small>${l}</small></div>`).join('');
+const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const L=(s)=>s.split(' ').map(x=>({v:x.replace("'",''),n:x.includes("'")}));
+const isRaw=l=>!Array.isArray(l);
+const keyOf=l=>isRaw(l)?'raw:'+l.txt:l.slice().sort((a,b)=>a.v<b.v?-1:1).map(x=>(x.n?'~':'')+x.v).join(',');
+const sortL=l=>isRaw(l)?l:l.slice().sort((a,b)=>a.v<b.v?-1:1);
+const litH=l=>l.n?nb(l.v):l.v;
+function itemH(type,l){if(isRaw(l))return l.raw;return type==='pos'?`(${l.map(litH).join(' + ')})`:l.map(litH).join('')}
+function twinInfo(M){const cnt={},idx={};let ti=0;M.items.forEach(l=>{const k=keyOf(l);cnt[k]=(cnt[k]||0)+1});Object.keys(cnt).forEach(k=>{if(cnt[k]>1)idx[k]=(ti++%2)+1});return {cnt,idx}}
+function exprH(M,stage){const {idx}=twinInfo(M),seen={};
+  const parts=M.items.map(l=>{const k=keyOf(l);const first=!seen[k];seen[k]=1;const s=stage>=1?sortL(l):l;const cls=['br'];
+    if(stage===1&&!isRaw(l)&&s.map(x=>x.v).join()!==l.map(x=>x.v).join())cls.push('sorted');if(stage>=2&&idx[k])cls.push('t'+idx[k]);if(stage>=3&&!first)cls.push('gone');
+    return `<span class="${cls.join(' ')}">${itemH(M.type,s)}</span>`});
+  let h=parts.join(M.type==='pos'?'':' + ');if(stage>=3)h+=`<br>= ${finalH(M)}`;return h}
+function finalItems(M){const seen={};return M.items.filter(l=>{const k=keyOf(l);if(seen[k])return false;return seen[k]=1}).map(sortL)}
+function finalH(M){return finalItems(M).map(l=>itemH(M.type,l)).join(M.type==='pos'?'':' + ')}
+function exprTxt(M,items){return (items||M.items).map(l=>isRaw(l)?l.txt:M.type==='pos'?'('+l.map(x=>x.v+(x.n?"'":'')).join('+')+')':l.map(x=>x.v+(x.n?"'":'')).join('')).join(M.type==='pos'?'':'+')}
+const say=(M,l)=>isRaw(l)?l.read:l.map(x=>(x.n?'not ':'')+(M.legend?M.legend[x.v]:x.v)).join(M.type==='pos'?' OR ':' AND ');
+const TEX=[
+ {name:'Real life · school gate',type:'pos',items:[L('G C'),L('D E'),L('C G')],legend:{C:'has a card',G:'guard opens',D:'daytime',E:'event today'},
+  story:`<b>Real life</b>The school gate opens only if two rules are both OK. Rule 1: the student has a card (C) OR the guard opens (G). Rule 2: it is daytime (D) OR there is an event (E). The security company typed rule 1 twice, in a different order. Every extra rule costs extra gates in the chip.`,
+  end:'The gate behaves exactly the same with one rule less: cheaper chip, same safety.'},
+ {name:'Tutorial Q2a',type:'pos',items:[L("A' D"),L("D A'"),L("B E A'"),L("A' E B"),L('A B C')],story:`<b>Tutorial Q2a</b>Five brackets joined by AND. Same 3 moves as the school gate. Watch the bars: <span class="mono">${nb('A')}</span> moves together with its bar.`},
+ {name:'Tutorial Q2b',type:'pos',items:[L('X Y'),L('Y Z'),L('Y X')],story:'<b>Tutorial Q2b</b>Three brackets. One of them is a twin in disguise.',end:'Bonus for fast students: with the distributive law, (X + Y)(Y + Z) = Y + XZ.'},
+ {name:'Tutorial Q2c',type:'pos',items:[L('A B C'),L('D E F'),L('X Y'),L('C A B')],story:'<b>Tutorial Q2c</b>Four brackets. Sorting makes the twins obvious.'},
+ {name:'Tutorial Q2d',type:'sop',items:[L('A B C'),L("A' B' C'"),L("B' C'"),{raw:'A(B + C)',read:'A AND (B OR C)',txt:'A(B+C)'},L('C B A'),L("C' B'")],
+  story:`<b>Tutorial Q2d</b>This one is a sum (OR) of terms. Inside a term the letters are joined by AND, and the commutative law works the same way: CBA = ABC. The term A(B + C) has a bracket inside, so we leave it as it is.`,
+  end:`Bonus for fast students: with absorption it shrinks all the way to A + ${nb('B')}${nb('C')}.`}];
+let TM=TEX[0],tS=0;
+$('#tEx').innerHTML=TEX.map((e,i)=>`<button data-tex="${i}" aria-pressed="${i===0}">${e.name}</button>`).join('');
+$$('[data-tex]').forEach(b=>b.onclick=()=>{TM=TEX[+b.dataset.tex];tS=0;$$('[data-tex]').forEach(x=>x.setAttribute('aria-pressed',x===b));drawT()});
+function tSteps(M){const pos=M.type==='pos',W=pos?'bracket':'term';const nv=new Set(M.items.flatMap(l=>isRaw(l)?['A','B','C']:l.map(x=>x.v))).size;const {cnt}=twinInfo(M);
+  const read=M.items.map((l,i)=>`${W} ${i+1}: <span class="mono">${itemH(M.type,l)}</span> → “${esc(say(M,l))}”`);
+  const s1=M.items.map((l,i)=>{if(isRaw(l))return `${W} ${i+1}: <span class="mono">${l.raw}</span> has a bracket inside → leave it`;const s=sortL(l);const same=s.map(x=>x.v).join()===l.map(x=>x.v).join();
+    return `${W} ${i+1}: <span class="mono">${itemH(M.type,l)}</span> → <span class="mono">${itemH(M.type,s)}</span> ${same?'<span class="muted">(already in order)</span>':'<b style="color:var(--accent)">re-ordered</b>'}`});
+  const groups={};M.items.forEach((l,i)=>{const k=keyOf(l);(groups[k]=groups[k]||[]).push(i+1)});
+  const s2=Object.entries(groups).map(([k,pos_])=>{const l=sortL(M.items[pos_[0]-1]);return pos_.length>1?`<span class="mono">${itemH(M.type,l)}</span> appears <b>${pos_.length} times</b> (${W}s ${pos_.join(' and ')}) → twins`:`<span class="mono">${itemH(M.type,l)}</span> appears once (${W} ${pos_[0]})`});
+  const seen={};const s3=M.items.map((l,i)=>{const k=keyOf(l);const f=!seen[k];seen[k]=1;return f?`Keep ${W} ${i+1}: <span class="mono">${itemH(M.type,sortL(l))}</span>`:`Cross out ${W} ${i+1}: it is a copy`});
+  return [
+ ['Read it first',`${pos?'Each bracket is an OR, and the brackets are joined by AND.':'Each term is an AND of letters, and the terms are joined by OR.'} Read each ${W} aloud.`,read],
+ ['Move 1 · Commutative law: sort the letters',`The order does not matter: ${pos?'“card or guard” is the same as “guard or card”.':'“bread and milk” is the same as “milk and bread”.'} So write the letters of every ${W} in A, B, C order. A bar moves with its letter. The <b style="color:var(--accent)">blue</b> ones changed.`,s1],
+ ['Move 2 · Find the twins',`Twins have exactly the same letters with the same bars. Same colour = twins.`,s2],
+ ['Move 3 · Idempotent law: keep only one',pos?'X · X = X. “Is the door open AND is the door open?” is just “Is the door open?”. Keep the first one, cross out the copies.':'X + X = X. “I am hungry OR I am hungry” is just “I am hungry”. Keep the first one, cross out the copies.',s3],
+ ['Finished',`Answer: <b class="mono">${finalH(M)}</b>. ${M.end||''}`,[`${M.items.length} ${W}s became ${finalItems(M).length}.`,`The page tried all ${1<<nv} combinations of 0 and 1: the long and the short versions always give the same output.`]]]}
+function drawT(){refreshPaper('pp2',paper2);const S=tSteps(TM);$('#tStory').innerHTML=TM.story+(TM.legend?`<div class="legend2" style="margin-top:6px">${Object.entries(TM.legend).map(([k,v])=>`<span><b>${k}</b> = ${v}</span>`).join('')}</div>`:'');
+  $('#tTitle').textContent=S[tS][0];$('#tText').innerHTML=S[tS][1];$('#tShow').innerHTML=exprH(TM,Math.min(tS,3));$('#tAct').innerHTML=S[tS][2].map(x=>`<li>${x}</li>`).join('');
+  $('#tStepN').textContent=`Step ${tS+1} of ${S.length}`;$('#tBack').disabled=tS===0;$('#tNext').disabled=tS===S.length-1}
+$('#tNext').onclick=()=>{tS++;drawT()};$('#tBack').onclick=()=>{tS--;drawT()};
+// practice
+let TD=null;
+function newTidy(){const pool=['P','Q','R','S','T','W'];const type=Math.random()<.5?'pos':'sop';const uniq=[];const keys=new Set();
+  while(uniq.length<3){const kk=2+Math.floor(Math.random()*2);const lits=shuf(pool).slice(0,kk).map(v=>({v,n:Math.random()<.25}));const key=keyOf(lits);if(keys.has(key))continue;keys.add(key);uniq.push(lits)}
+  const nd=1+Math.floor(Math.random()*2);const dups=shuf(uniq).slice(0,nd).map(l=>{let s;do{s=shuf(l)}while(s.map(x=>x.v).join()===l.map(x=>x.v).join());return s});
+  TD={type,items:shuf([...uniq.map(l=>shuf(l)),...dups])};$('#tidyExpr').innerHTML=exprH(TD,0);$('#tidyAns').value='';$('#tidyFb').textContent='';$('#tidyMsg').textContent=''}
+$('#tidyNew').onclick=newTidy;
+$('#tidySolve').onclick=()=>{$('#tidyExpr').innerHTML=exprH(TD,3);$('#tidyMsg').textContent='Move 1: every '+(TD.type==='pos'?'bracket':'group')+' sorted. Move 2: same colour = twins. Move 3: the copies are crossed out.'};
+$('#tidyCheck').onclick=()=>{const fb=$('#tidyFb');let p;try{p=parseExpr($('#tidyAns').value)}catch(e){fb.className='fb no';fb.textContent='I cannot read it: '+e.message;return}
+  const orig=parseExpr(exprTxt(TD));const r=sameFn(orig,p);if(!r.ok){fb.className='fb no';fb.textContent='Not the same as the original. Did you lose a letter or a bar?';return}
+  const want=finalItems(TD).length;const top=TD.type==='pos'?'and':'or';const got=p.e.op===top?p.e.k.length:1;
+  fb.className='fb ok';fb.textContent=got>want?'Same result, but there are still twins. Do move 3 again.':'Correct! Same output on every combination.'};
+// compare
+$('#cmp').onclick=()=>{let a,b;try{a=parseExpr($('#ex1').value)}catch(e){return msg('Expression 1: '+e.message)}try{b=parseExpr($('#ex2').value)}catch(e){return msg('Expression 2: '+e.message)}
+  const V=[...new Set([...a.vars,...b.vars])].sort();if(V.length>5)return msg('Use at most 5 different letters.');let same=true;let rows='';
+  for(let m=0;m<(1<<V.length);m++){const env={};V.forEach((v,j)=>env[v]=(m>>(V.length-1-j))&1);const x=evalE(a.e,env),y=evalE(b.e,env);if(x!==y)same=false;
+    rows+=`<tr>${V.map(v=>`<td class="b${env[v]}">${env[v]}</td>`).join('')}<td class="b${x}${x!==y?' diff':''}">${x}</td><td class="b${y}${x!==y?' diff':''}">${y}</td></tr>`}
+  $('#cmpT').innerHTML=`<tr>${V.map(v=>`<th>${v}</th>`).join('')}<th>1</th><th>2</th></tr>`+rows;
+  $('#cmpFb').className='fb '+(same?'ok':'no');$('#cmpFb').textContent=same?`The same: equal on all ${1<<V.length} lines.`:'Different: look at the red lines.';
+  function msg(t){$('#cmpFb').className='fb no';$('#cmpFb').textContent=t;$('#cmpT').innerHTML=''}};
+
+
+// ---------- station 3: K-map lesson (animated) ----------
+const LEX=[
+ {name:'Real life · canteen break',n:3,ones:[2,4,6],legend:{A:'I am hungry',B:'a friend asks me to come',C:'my next class starts in 5 minutes'},
+  story:'Between two classes, should you walk to the canteen? Three questions with yes (1) or no (0): A = I am hungry, B = a friend asks me to come, C = my next class starts in 5 minutes. The truth table writes your decision for every case (Out = 1 means: go to the canteen).',
+  end:`Read it as a sentence: go to the canteen when your class is NOT starting in 5 minutes AND (you are hungry OR a friend asks you). The long table became one short rule.`},
+ {name:'Example · 3 inputs',n:3,ones:[0,2,3,7]},
+ {name:'Real life · lecture hall lights',n:4,ones:[5,7,10,11,13,15],legend:{A:'weekday',B:'daytime',C:'a class is booked',D:'people are inside'},
+  story:'The lights of a lecture hall are controlled by 4 sensors: A = it is a weekday, B = it is daytime, C = a class is booked, D = people are inside. The technician wrote, for all 16 cases, whether the lights must be on (Out = 1).',
+  end:'Read it as a sentence: lights on when (it is daytime AND people are inside) OR (it is a weekday evening AND a class is booked). Two small gates instead of six long terms.'},
+ {name:'Example · 4 inputs',n:4,ones:[4,5,7,12,13,15]},
+ {name:'Example · round the edge',n:4,ones:[0,2,5,8,10]}];
+let LE=LEX[0],lS=0,lTimer=null;
+function drawLexChips(){$('#lEx').innerHTML=LEX.map((e,i)=>LN&&e.n!==LN?'':`<button data-lex="${i}" aria-pressed="${LEX[i]===LE}">${e.name}</button>`).join('');
+  $$('[data-lex]').forEach(b=>b.onclick=()=>{LE=LEX[+b.dataset.lex];lS=0;sS=0;lStop();drawLexChips();buildL();drawL();drawSC()})}
+const posOf=(n,m)=>{for(let r=0;r<(n===3?2:4);r++)for(let c=0;c<4;c++)if(cellM(n,r,c)===m)return [r,c]};
+let LST=[],LSOL=[];
+function bitsH(m,n,j){return [...bits(m,n)].map((b,i)=>i===j?`<b>${b}</b>`:b).join(' ')}
+function buildL(){const n=LE.n,V=VARS(n),N=1<<n,ON=new Set(LE.ones);const sol=solveSOP(n,LE.ones);LSOL=sol;const S=[];
+  const leg=LE.legend?` (${V.map(v=>`${v} = ${LE.legend[v]}`).join(', ')})`:'';
+  S.push({st:'Stage 1 · Draw the boxes',t:'One box for each line',fill:-1,acts:[
+    LE.story?`<b>The story.</b> ${LE.story}`:`The truth table has ${N} lines${leg}.`,
+    `${N} lines → ${N} boxes. Each box has its line number in the small corner.`,
+    n===3?'The row of a box gives A (0 or 1). The column gives B and C together.':'The row of a box gives A and B together. The column gives C and D together.']});
+  S.push({st:'Stage 1 · Draw the boxes',t:'Count 00, 01, 11, 10 (not 00, 01, 10, 11)',fill:-1,hot:1,acts:[
+    'Look at the amber labels: 00 → 01 → 11 → 10.',
+    'Between two boxes side by side, only ONE bit changes: 0<b>0</b> → 0<b>1</b>, then <b>0</b>1 → <b>1</b>1, then 1<b>1</b> → 1<b>0</b>.',
+    'This is why box 3 comes before box 2 in the first row.',
+    `The right edge touches the left edge${n===4?', and the top touches the bottom':''}, like a world map that goes round.`]});
+  for(let m=0;m<N;m++){const b=bits(m,n),o=ON.has(m)?1:0;const rowB=n===3?b[0]:b.slice(0,2),colB=n===3?b.slice(1):b.slice(2);
+    S.push({st:'Stage 2 · Copy the outputs',t:`Line ${m} → box ${m}`,fill:m,cur:[m],row:m,acts:[
+      `Line ${m}: ${V.map((v,j)=>`${v} = ${b[j]}`).join(', ')}, Out = <b>${o}</b>.`,
+      `Find the row ${n===3?'A':'AB'} = <b>${rowB}</b> and the column ${n===3?'BC':'CD'} = <b>${colB}</b>. They meet at box ${m}.`,
+      `Write <b>${o}</b> in box ${m}.${o?' (a 1: we will circle it later)':''}`]})}
+  const covered=new Set();
+  sol.forEach((c,gi)=>{const ms=cubeMins(c);const fresh=ms.filter(m=>!covered.has(m));const s=fresh.length?fresh[0]:ms[0];
+    const dash=[...c].map((ch,j)=>ch==='-'?j:-1).filter(j=>j>=0),fixed=[...c].map((ch,j)=>ch!=='-'?j:-1).filter(j=>j>=0);
+    let cells=[s];const base=`Group ${gi+1} of ${sol.length}`;
+    S.push({st:'Stage 3 · Circle the groups',t:`${base}: start from box ${s}`,fill:N,g:gi,gcells:[s],cur:[s],done:gi,acts:[
+      covered.size?`Box ${s} is a 1 that is not inside a group yet.`:`Start from a 1: box ${s}.`,
+      'Rule: a group is a rectangle of 1, 2, 4 or 8 boxes, and every box in it must be 1. Bigger is better.']});
+    dash.forEach(j=>{const nxt=cells.map(m=>m^(1<<(n-1-j)));const P=[...cells,...nxt].map(m=>posOf(n,m));const cs=new Set(P.map(p=>p[1])),rs=new Set(P.map(p=>p[0]));
+      const wrap=(cs.has(0)&&cs.has(3)&&cs.size<4)||(n===4&&rs.has(0)&&rs.has(3)&&rs.size<4);
+      S.push({st:'Stage 3 · Circle the groups',t:`${base}: grow it by changing ${V[j]}`,fill:N,g:gi,gcells:[...cells,...nxt],cur:nxt,done:gi,acts:[
+        `Change only ${V[j]} (flip its bit): <span class="bitrow">${bitsH(cells[0],n,j)}</span> → <span class="bitrow">${bitsH(nxt[0],n,j)}</span>. Box ${cells[0]} → box ${nxt[0]}.`,
+        `New box${nxt.length>1?'es':''}: ${nxt.join(', ')}. ${nxt.length>1?'They are all':'It is'} 1 → the group doubles to <b>${cells.length*2} boxes</b>.`,
+        wrap?'These boxes are neighbours <b>round the edge</b> (the map goes round).':'They are neighbours on the map: only one bit is different.']});
+      cells=[...cells,...nxt]});
+    const tries=fixed.map(j=>{const nxt=cells.map(m=>m^(1<<(n-1-j)));const z=nxt.filter(m=>!ON.has(m));return {j,nxt,z}});
+    S.push({st:'Stage 3 · Circle the groups',t:`${base}: can it grow more? No → circle it`,fill:N,g:gi,gcells:cells,bad:tries.flatMap(t=>t.z),done:gi,acts:[
+      ...tries.map(t=>`Change ${V[t.j]}: box${t.nxt.length>1?'es':''} ${t.nxt.join(', ')}. Box ${t.z.join(', ')} ${t.z.length>1?'are':'is'} 0 (red) → cannot grow that way.`),
+      `Final group ${gi+1}: box${cells.length>1?'es':''} ${cells.slice().sort((a,b)=>a-b).join(', ')} (${cells.length} box${cells.length>1?'es':''}).`]});
+    S.push({st:'Stage 4 · Read each group',t:`${base}: the column test`,fill:N,g:gi,gcells:cells,col:gi,done:gi,acts:[
+      'Write the bits of every box of the group under A, B, C' + (n===4?', D.':'.'),
+      'Look down each column: <b>0 and 1 mixed</b> → that letter changes, remove it.',
+      'Always <b>1</b> → write the letter. Always <b>0</b> → write the letter with a bar.',
+      `Group ${gi+1} = <b class="mono">${termHTML(c,V)}</b>`]});
+    ms.forEach(m=>covered.add(m))});
+  S.push({st:'Stage 4 · Read each group',t:'Join the groups with +',fill:N,done:sol.length,acts:[
+    `Out = <b class="mono">${sopHTML(sol,V)}</b>`,
+    'Check: every 1 is inside a group, no 0 is inside a group, each group is as big as possible.',
+    ...(LE.end?[`<b>Back to the story.</b> ${LE.end}`]:[])]});
+  LST=S;$('#lSeek').max=S.length-1}
+function drawL(){const S=LST,st=S[lS],n=LE.n,V=VARS(n),ON=new Set(LE.ones),sol=LSOL,N=1<<n;
+  $('#lStage').textContent=st.st;$('#lTitle').textContent=st.t;$('#lStepN').textContent=`Step ${lS+1} of ${S.length}`;$('#lSeek').value=lS;
+  $('#lAct').innerHTML=`<b>What we do, one by one</b><ol>${st.acts.map(a=>`<li>${a}</li>`).join('')}</ol>`;
+  $('#lBack').disabled=lS===0;$('#lNext').disabled=lS===S.length-1;
+  const gset=new Set(st.gcells||[]),cur=new Set(st.cur||[]),bad=new Set(st.bad||[]);
+  $('#lTT').innerHTML=`<tr><th>#</th>${V.map(v=>`<th>${v}</th>`).join('')}<th>Out</th></tr>`+[...Array(N).keys()].map(m=>`<tr class="${st.row===m?'now':gset.has(m)?'pick':''}"><td class="muted">${m}</td>${[...bits(m,n)].map(b=>`<td class="b${b}">${b}</td>`).join('')}<td class="b${ON.has(m)?1:0}" style="font-weight:700">${ON.has(m)?1:0}</td></tr>`).join('');
+  const rows=n===3?2:4,rh=n===3?['0','1']:GRAY2.map(x=>bits(x,2)),ch=GRAY2.map(x=>bits(x,2));
+  const fr=st.row,colB=fr!==undefined?(n===3?bits(fr,3).slice(1):bits(fr,4).slice(2)):null,rowB=fr!==undefined?(n===3?bits(fr,3)[0]:bits(fr,4).slice(0,2)):null;
+  let h=`<tr><th class="corner">${n===3?'A \\ BC':'AB \\ CD'}</th>${ch.map(x=>`<th class="${st.hot||x===colB?'hot':''}">${x}</th>`).join('')}</tr>`;
+  for(let r=0;r<rows;r++){h+=`<tr><th class="${(st.hot&&n===4)||rh[r]===rowB?'hot':''}">${rh[r]}</th>`;for(let c=0;c<4;c++){const m=cellM(n,r,c);const v=m<=st.fill?(ON.has(m)?1:0):'';
+    const sty=gset.has(m)?`background:color-mix(in srgb,var(--g${st.g+1}) 30%,var(--panel));border-color:var(--g${st.g+1});border-width:3px`:'';
+    const dots=[...Array(st.done||0).keys()].filter(i=>cubeMins(sol[i]).includes(m));
+    h+=`<td><div class="kc${v!==''?' v'+v:''}${cur.has(m)?' cur':''}${bad.has(m)?' bad':''}${m===st.row?' fresh':''}" style="display:grid;place-items:center;${sty}"><small>${m}</small>${v}${dots.length?`<span class="dots">${dots.map(i=>`<i style="background:var(--g${i+1})"></i>`).join('')}</span>`:''}</div></td>`}h+='</tr>'}
+  $('#lMap').innerHTML=h;
+  if(st.col!==undefined){const c=sol[st.col],ms=cubeMins(c);
+    $('#lCol').innerHTML=`<h3 style="margin-bottom:6px">Column test</h3><div class="scroll"><table class="t coltest"><tr><th>box</th>${V.map(v=>`<th>${v}</th>`).join('')}</tr>${ms.map(m=>`<tr><td class="muted">${m}</td>${[...bits(m,n)].map((b,j)=>`<td class="${c[j]==='-'?'out':'keep'}">${b}</td>`).join('')}</tr>`).join('')}
+      <tr><th>so</th>${[...c].map((x,j)=>`<td style="font-family:var(--body);font-size:.85rem">${x==='-'?`mixed → <b>remove ${V[j]}</b>`:x==='1'?`always 1 → <b class="mono">${V[j]}</b>`:`always 0 → <b class="mono">${nb(V[j])}</b>`}</td>`).join('')}</tr></table></div>`}
+  else $('#lCol').innerHTML=''}
+function lStop(){clearInterval(lTimer);lTimer=null;$('#lPlay').textContent='▶ Play'}
+$('#lNext').onclick=()=>{lStop();if(lS<LST.length-1){lS++;drawL()}};$('#lBack').onclick=()=>{lStop();if(lS>0){lS--;drawL()}};
+$('#lSeek').oninput=e=>{lStop();lS=+e.target.value;drawL()};
+$('#lPlay').onclick=()=>{if(lTimer){lStop();return}$('#lPlay').textContent='❚❚ Pause';lTimer=setInterval(()=>{if(lS<LST.length-1){lS++;drawL()}else lStop()},1800)};
+function openLesson(ex){const i=LEX.findIndex(e=>e.name===ex.name);if(i>=0)LEX[i]=ex;else LEX.push(ex);LE=ex;lS=0;sS=0;lStop();drawLexChips();buildL();drawL();drawSC()}
+
+// ---------- shortcut ----------
+let sS=0;
+const CH=['--g1','--g2','--g3','--g5'];
+function scSteps(){const n=LE.n,V=VARS(n),N=1<<n,ON=new Set(LE.ones),sol=solveSOP(n,LE.ones);const nb4=N/4;
+  const S=[];
+  S.push({t:'Shortcut 1 · Cut the Out column into blocks of 4',v:'col',acts:[`Look only at the Out column of the truth table (${N} lines).`,`Cut it into ${nb4} blocks of 4 lines: lines 0–3${nb4>1?', 4–7':''}${nb4>2?', 8–11, 12–15':''}. Each colour is one block.`,LE.story?`<b>The story.</b> ${LE.story}`:'']});
+  S.push({t:'Lay each block down as a row',v:'rows',sw:0,acts:['Turn each block sideways: block 1 becomes row 1, block 2 becomes row 2…','The small number in each box is still the line number.']});
+  S.push({t:'Swap the 3rd and 4th box of every row',v:'rows',sw:1,acts:['In every row, the 3rd and 4th boxes change places (purple).','Why? The K-map counts 00, 01, <b>11, 10</b>: line 3 (…11) must come before line 2 (…10).','So each row now reads: 0, 1, <b>3, 2</b> — then 4, 5, <b>7, 6</b>…']});
+  if(n===4)S.push({t:'4 inputs: also swap the 3rd and 4th row',v:'rows',sw:2,acts:['Same idea for the rows: the 3rd and 4th rows change places (purple).','The rows now go: lines 0–3, 4–7, <b>12–15, 8–11</b> (labels 00, 01, <b>11, 10</b>).']});
+  S.push({t:'Done: this is your K-map',v:'map',acts:['Add the labels: '+(n===3?'A on the left (0, 1), BC on top (00, 01, 11, 10).':'AB on the left and CD on top, both 00, 01, 11, 10.'),'No need to convert line by line: 4 boxes at a time, then one swap.']});
+  S.push({t:'Shortcut 2 · Circle: biggest first',v:'map',groups:1,acts:['Look for a group of 8, then groups of 4 (a full row, a full column, or a 2×2 square), then pairs, then single boxes.','Groups may overlap and may go round the edges. Stop when every 1 is circled.',`Here: ${sol.map((c,i)=>`group ${i+1} = ${cubeMins(c).length} box${cubeMins(c).length>1?'es':''}`).join(', ')}.`]});
+  sol.forEach((c,i)=>{const ms=cubeMins(c);const lines=V.map((v,j)=>{const vals=[...new Set(ms.map(m=>bits(m,n)[j]))];return vals.length>1?`${v}: 0 and 1 → different → <b>delete ${v}</b>`:`${v}: always ${vals[0]} → same → <b class="mono">${vals[0]==='1'?v:nb(v)}</b>`});
+    S.push({t:`Shortcut 3 · Read group ${i+1}: same or different?`,v:'map',groups:1,sel:i,acts:[`Group ${i+1} = boxes ${ms.join(', ')}. Read the labels of its row${n===3?'':'s'} and column${ms.length>1?'s':''}.`,...lines,`Group ${i+1} = <b class="mono">${termHTML(c,V)}</b>`]})});
+  S.push({t:'Join the groups with +',v:'map',groups:1,acts:[`Out = <b class="mono">${sopHTML(sol,V)}</b>`,...(LE.end?[`<b>Back to the story.</b> ${LE.end}`]:[])]});
+  return {S,sol}}
+function drawSC(){refreshPaper('pp3',paper3);const {S,sol}=scSteps();if(sS>=S.length)sS=S.length-1;const st=S[sS],n=LE.n,N=1<<n,ON=new Set(LE.ones);
+  $('#scTitle').textContent=st.t;$('#scStepN').textContent=`Step ${sS+1} of ${S.length}`;$('#scBack').disabled=sS===0;$('#scNext').disabled=sS===S.length-1;
+  $('#scAct').innerHTML=`<b>What we do</b><ol>${st.acts.filter(Boolean).map(a=>`<li>${a}</li>`).join('')}</ol>`;
+  const tint=m=>`background:color-mix(in srgb,var(${CH[m>>2]}) 22%,var(--panel))`;
+  const box=(m,extra='',sty='')=>`<div class="bx${ON.has(m)?' one':''}${extra}" style="${sty}"><small>${m}</small>${ON.has(m)?1:0}</div>`;
+  let v='';
+  if(st.v==='col'){v=`<div class="outcol">${[...Array(N).keys()].map(m=>`<div style="${tint(m)}"><span class="muted">${m}</span><b class="${ON.has(m)?'b1':'b0'}" style="color:var(${ON.has(m)?'--on':'--off'})">${ON.has(m)?1:0}</b></div>`).join('')}</div>`}
+  if(st.v==='rows'){let order=[...Array(N/4).keys()];if(st.sw>=2)order=[0,1,3,2];
+    v=`<div>${order.map((b,ri)=>{let cols=[0,1,2,3];if(st.sw>=1)cols=[0,1,3,2];return `<div class="blkrow"><span class="lab">Block ${b+1}</span>${cols.map((c,ci)=>{const m=b*4+c;const sw=(st.sw===1&&ci>=2)||(st.sw===2&&ri>=2);return box(m,sw?' sw':'',tint(m))}).join('')}</div>`}).join('')}${st.sw===1?'<p class="swapnote">⇄ the 3rd and 4th boxes of every row changed places</p>':''}${st.sw===2?'<p class="swapnote">⇅ the 3rd and 4th rows changed places</p>':''}</div>`}
+  if(st.v==='map'){const rows=n===3?2:4,rh=n===3?['0','1']:GRAY2.map(x=>bits(x,2)),ch=GRAY2.map(x=>bits(x,2));
+    let h=`<table class="kmap"><tr><th class="corner">${n===3?'A \\ BC':'AB \\ CD'}</th>${ch.map(x=>`<th>${x}</th>`).join('')}</tr>`;
+    for(let r=0;r<rows;r++){h+=`<tr><th>${rh[r]}</th>`;for(let c=0;c<4;c++){const m=cellM(n,r,c);let sty='';
+      if(st.groups){const gs=sol.map((cb,i)=>cubeMins(cb).includes(m)?i:-1).filter(i=>i>=0);
+        if(st.sel!==undefined){if(gs.includes(st.sel))sty=`background:color-mix(in srgb,var(--g${st.sel+1}) 30%,var(--panel));border-color:var(--g${st.sel+1});border-width:3px`}
+        else if(gs.length)sty=`background:color-mix(in srgb,var(--g${gs[0]+1}) 25%,var(--panel));border-color:var(--g${gs[0]+1});border-width:3px`}
+      const dots=st.groups?sol.map((cb,i)=>cubeMins(cb).includes(m)?i:-1).filter(i=>i>=0):[];
+      h+=`<td><div class="kc${ON.has(m)?' v1':' v0'}" style="display:grid;place-items:center;${sty}"><small>${m}</small>${ON.has(m)?1:0}${dots.length>1?`<span class="dots">${dots.map(i=>`<i style="background:var(--g${i+1})"></i>`).join('')}</span>`:''}</div></td>`}h+='</tr>'}
+    v=`<div class="scroll">${h}</table></div>`}
+  $('#scView').innerHTML=v}
+$('#scNext').onclick=()=>{sS++;drawSC()};$('#scBack').onclick=()=>{sS--;drawSC()};
+// ---------- station 3: practice ----------
+const TUT=[[3,'0,1,3,5'],[4,'1,5,9,10,11,13,15']];
+let K={n:3,ones:[],user:{},sol:[],selG:-1,shown:false};
+const VARS=n=>n===3?['A','B','C']:['A','B','C','D'];
+const cellM=(n,r,c)=>n===3?r*4+GRAY2[c]:GRAY2[r]*4+GRAY2[c];
+const bits=(x,w)=>x.toString(2).padStart(w,'0');
+function newK(n,ones){K.n=n;K.user={};K.selG=-1;K.shown=false;
+  if(ones)K.ones=ones;else{for(let t=0;t<200;t++){const lo=n===3?3:5,hi=n===3?5:9;const k=lo+Math.floor(Math.random()*(hi-lo+1));const o=shuf([...Array(1<<n).keys()]).slice(0,k).sort((a,b)=>a-b);
+    if(TUT.some(([tn,s])=>tn===n&&s===o.join(',')))continue;if(solveSOP(n,o).length<2)continue;K.ones=o;break}}
+  K.sol=solveSOP(n,K.ones);$$('[data-n]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.n===n));
+  $('#kFb').textContent='';$('#kAns').value='';$('#kAnsFb').textContent='';drawK()}
+function drawK(){const n=K.n,V=VARS(n),S=new Set(K.ones);
+  $('#kTT').innerHTML=`<tr><th>#</th>${V.map(v=>`<th>${v}</th>`).join('')}<th>Out</th></tr>`+[...Array(1<<n).keys()].map(m=>`<tr><td class="muted">${m}</td>${[...bits(m,n)].map(b=>`<td class="b${b}">${b}</td>`).join('')}<td class="b${S.has(m)?1:0}" style="font-weight:700">${S.has(m)?1:0}</td></tr>`).join('');
+  const rows=n===3?2:4,rh=n===3?['0','1']:GRAY2.map(x=>bits(x,2)),ch=GRAY2.map(x=>bits(x,2));
+  const corner=n===3?'A \\ BC':'AB \\ CD';const showN=$('#kNum').checked;
+  const gOf=m=>K.shown?K.sol.map((c,i)=>cubeMins(c).includes(m)?i:-1).filter(i=>i>=0):[];
+  let h=`<tr><th class="corner">${corner}</th>${ch.map(x=>`<th>${x}</th>`).join('')}</tr>`;
+  for(let r=0;r<rows;r++){h+=`<tr><th>${rh[r]}</th>`;for(let c=0;c<4;c++){const m=cellM(n,r,c);const u=K.user[m];const gs=gOf(m);
+      const sel=K.selG>=0&&gs.includes(K.selG)?`box-shadow:inset 0 0 0 4px var(--g${K.selG+1});`:'';
+      h+=`<td><button class="kc${u!==undefined?' v'+u:''}" data-m="${m}" style="${sel}" aria-label="cell ${m}">${showN?`<small>${m}</small>`:''}${u??''}${gs.length?`<span class="dots">${gs.map(i=>`<i style="background:var(--g${i+1})"></i>`).join('')}</span>`:''}</button></td>`}h+='</tr>'}
+  $('#kMap').innerHTML=h;
+  $$('[data-m]').forEach(b=>b.onclick=()=>{const m=+b.dataset.m;K.user[m]=K.user[m]===1?0:1;$('#kFb').textContent='';drawK()});
+  $('#kGroups').innerHTML=K.shown?K.sol.map((c,i)=>`<button class="grp" data-grp="${i}" aria-pressed="${K.selG===i}"><span class="sq" style="background:var(--g${i+1})"></span><span><span class="term">${termHTML(c,V)}</span> <span class="muted">(cell${cubeMins(c).length>1?'s':''} ${cubeMins(c).join(', ')})</span><br>${[...c].map((ch,j)=>ch==='-'?`${V[j]} changes → ${V[j]} disappears`:ch==='1'?`${V[j]} is always 1 → ${V[j]}`:`${V[j]} is always 0 → ${nb(V[j])}`).join('; ')}</span></button>`).join(''):'';
+  $$('[data-grp]').forEach(b=>b.onclick=()=>{K.selG=K.selG===+b.dataset.grp?-1:+b.dataset.grp;drawK()});
+  $('#kResult').innerHTML=K.shown?`Out = ${sopHTML(K.sol,V)}`:''}
+$$('[data-n]').forEach(b=>b.onclick=()=>newK(+b.dataset.n));
+$('#kNew').onclick=()=>newK(K.n);$('#kNum').onchange=drawK;
+$('#kCheck').onclick=()=>{const S=new Set(K.ones);let ok=0,N=1<<K.n;$$('[data-m]').forEach(b=>{const m=+b.dataset.m;const g=(K.user[m]??-1)===(S.has(m)?1:0);b.classList.toggle('right',g);b.classList.toggle('wrong',!g);if(g)ok++});
+  $('#kFb').className='fb '+(ok===N?'ok':'no');$('#kFb').textContent=ok===N?'Your K-map is correct.':`${ok} of ${N} cells correct. Turn on the line numbers to find each line.`};
+$('#kFill').onclick=()=>{const S=new Set(K.ones);for(let m=0;m<(1<<K.n);m++)K.user[m]=S.has(m)?1:0;drawK()};
+$('#kShow').onclick=()=>{K.shown=!K.shown;$('#kShow').textContent=K.shown?'Hide the groups':'Show the groups';drawK()};
+$('#kAnsCheck').onclick=()=>{let p;const fb=$('#kAnsFb');try{p=parseExpr($('#kAns').value)}catch(e){fb.className='fb no';fb.textContent='I cannot read it: '+e.message;return}
+  const V=VARS(K.n);const extra=p.vars.filter(v=>!V.includes(v));if(extra.length){fb.className='fb no';fb.textContent=`Use only the letters ${V.join(', ')}.`;return}
+  const S=new Set(K.ones);let wrong=[];for(let m=0;m<(1<<K.n);m++){const env={};V.forEach((v,j)=>env[v]=(m>>(K.n-1-j))&1);if(evalE(p.e,env)!==(S.has(m)?1:0))wrong.push(m)}
+  if(wrong.length){fb.className='fb no';fb.textContent=`Not the same function: it is wrong on line${wrong.length>1?'s':''} ${wrong.join(', ')} of the truth table.`;return}
+  const terms=p.e.op==='or'?p.e.k.length:1;fb.className='fb ok';fb.textContent=terms<=K.sol.length?'Correct, and as short as possible.':`Correct, but it can be shorter: the smallest answer has ${K.sol.length} term${K.sol.length>1?'s':''}. Try bigger groups.`};
+
+// ---------- station 4: algebra ----------
+const EX=[
+ {name:'Real life · canteen break',n:3,ones:[2,4,6],story:'<b>Real life</b>Between two classes, do you go to the canteen? A = I am hungry, B = a friend asks me to come, C = my next class starts in 5 minutes. Your rule, written case by case: go if (not hungry, friend asks, no class soon) OR (hungry, no friend, no class soon) OR (hungry, friend asks, no class soon).',
+  start:`${nb('A')}B${nb('C')} + A${nb('B')}${nb('C')} + AB${nb('C')}`,steps:[
+   ['Action 1 · find pairs',`AB${nb('C')} (the last term) differs from the first term only in A, and from the middle term only in B. It has two partners.`,`${nb('A')}B${nb('C')} + A${nb('B')}${nb('C')} + AB${nb('C')}`],
+   ['Action 2 · copy (idempotent)','X = X + X: write AB'+nb('C')+' twice, one copy for each partner.',`${nb('A')}B${nb('C')} + AB${nb('C')} + A${nb('B')}${nb('C')} + AB${nb('C')}`],
+   ['Action 3 · take out the common part (distributive)',`Pair 1 shares B${nb('C')}, pair 2 shares A${nb('C')}.`,`B${nb('C')}(${nb('A')} + A) + A${nb('C')}(${nb('B')} + B)`],
+   ['Action 4 · opposite pairs make 1 (complement)',`${nb('A')} + A = 1 and ${nb('B')} + B = 1.`,`B${nb('C')} · 1 + A${nb('C')} · 1`],
+   ['Identity','Remove the · 1.',`B${nb('C')} + A${nb('C')}`],
+   ['Distributive (optional)',`Both contain ${nb('C')}. Read it as a sentence: go when there is NO class in 5 minutes AND (hungry OR a friend asks).`,`${nb('C')}(A + B)`]]},
+ {name:'Two terms',n:3,ones:[3,7],start:`${nb('A')}BC + ABC`,steps:[
+   ['Distributive','Both terms contain BC. Take it out.',`BC(${nb('A')} + A)`],
+   ['Complement',`${nb('A')} + A is always 1.`,'BC · 1'],
+   ['Identity','Anything AND 1 stays the same.','BC']]},
+ {name:'Three terms: copy one',n:3,ones:[0,2,6],start:`${nb('A')}${nb('B')}${nb('C')} + ${nb('A')}B${nb('C')} + AB${nb('C')}`,steps:[
+   ['Look for pairs',`${nb('A')}B${nb('C')} (the middle term) differs from the first term only in B, and from the last term only in A. It has two partners.`,`${nb('A')}${nb('B')}${nb('C')} + ${nb('A')}B${nb('C')} + AB${nb('C')}`],
+   ['Idempotent',`X = X + X, so we may write the middle term twice: one copy for each partner.`,`${nb('A')}${nb('B')}${nb('C')} + ${nb('A')}B${nb('C')} + ${nb('A')}B${nb('C')} + AB${nb('C')}`],
+   ['Distributive','Take out what each pair has in common.',`${nb('A')}${nb('C')}(${nb('B')} + B) + B${nb('C')}(${nb('A')} + A)`],
+   ['Complement','Each bracket is a letter OR its opposite, so it is 1.',`${nb('A')}${nb('C')} · 1 + B${nb('C')} · 1`],
+   ['Identity','Remove the · 1.',`${nb('A')}${nb('C')} + B${nb('C')}`],
+   ['Distributive (optional)',`Both terms contain ${nb('C')}. Taking it out saves one gate.`,`${nb('C')}(${nb('A')} + B)`]]},
+ {name:'Four terms',n:3,ones:[2,3,6,7],start:`${nb('A')}B${nb('C')} + ${nb('A')}BC + ABC + AB${nb('C')}`,steps:[
+   ['Commutative + Distributive','Pair the terms that differ in C, and take out what they share.',`${nb('A')}B(${nb('C')} + C) + AB(C + ${nb('C')})`],
+   ['Complement + Identity','Each bracket is 1.',`${nb('A')}B + AB`],
+   ['Distributive','Both terms contain B.',`B(${nb('A')} + A)`],
+   ['Complement + Identity','The bracket is 1.','B']]},
+ {name:'Four corners (4 inputs)',n:4,ones:[0,2,8,10],start:`${nb('A')}${nb('B')}${nb('C')}${nb('D')} + ${nb('A')}${nb('B')}C${nb('D')} + A${nb('B')}${nb('C')}${nb('D')} + A${nb('B')}C${nb('D')}`,steps:[
+   ['Distributive','Pair the terms that differ only in C.',`${nb('A')}${nb('B')}${nb('D')}(${nb('C')} + C) + A${nb('B')}${nb('D')}(${nb('C')} + C)`],
+   ['Complement + Identity','Each bracket is 1.',`${nb('A')}${nb('B')}${nb('D')} + A${nb('B')}${nb('D')}`],
+   ['Distributive',`Both terms contain ${nb('B')} and ${nb('D')}. Take them out.`,`${nb('B')}${nb('D')}(${nb('A')} + A)`],
+   ['Complement + Identity','The bracket is 1. On the K-map, these four cells are the four corners, which touch each other through the edges.',`${nb('B')}${nb('D')}`]]}];
+let E=EX[0],eK=0;
+$('#exPick').innerHTML=EX.map((e,i)=>`<button data-ex="${i}" aria-pressed="${i===0}">${e.name}</button>`).join('');
+$$('[data-ex]').forEach(b=>b.onclick=()=>{E=EX[+b.dataset.ex];eK=0;$$('[data-ex]').forEach(x=>x.setAttribute('aria-pressed',x===b));drawEx()});
+function drawEx(){refreshPaper('pp4',paper4);$('#exStory').innerHTML=E.story||'<b>Method</b>Use the 4 actions above, one step at a time.';$('#exStart').innerHTML=E.start;$('#exSteps').innerHTML=E.steps.slice(0,eK).map(([l,t,x])=>`<li><div><span class="law-n">${l}</span><p>${t}</p><p class="mono">= ${x}</p></div></li>`).join('');
+  $('#exNext').disabled=eK>=E.steps.length;$('#exAll').disabled=eK>=E.steps.length}
+$('#exNext').onclick=()=>{eK++;drawEx()};$('#exAll').onclick=()=>{eK=E.steps.length;drawEx()};
+$('#exK').onclick=()=>{tab(E.n===4?3:2);openLesson({name:'From Q5 · '+E.name,n:E.n,ones:E.ones,story:E.story?E.story.replace(/<b>Real life<\/b>/,''):'',end:E.story?'Same answer as the algebra in Q5.':''});document.getElementById('scCard').scrollIntoView({block:'start'})};
+
+// ---------- exam paper model answers ----------
+const PL=(txt,law='')=>`<div class="pl"><span>${txt}</span><span class="plaw">${law?'('+law+')':''}</span></div>`;
+const ST=t=>`<div class="st">${t}</div>`;
+function paperBtn(id,render){const b=$('#'+id+'Btn'),p=$('#'+id);b.onclick=()=>{p.hidden=!p.hidden;b.textContent=p.hidden?'Show the model answer':'Hide the model answer';if(!p.hidden)p.innerHTML=render()};}
+function refreshPaper(id,render){const p=$('#'+id);if(!p.hidden)p.innerHTML=render()}
+function paper2(){const M=TM,W=M.type==='pos'?'bracket':'term',sorted={...M,items:M.items.map(sortL)};const sep=M.type==='pos'?'':' + ';
+  const {cnt}=twinInfo(M);const tw=Object.entries(cnt).filter(([k,c])=>c>1).map(([k])=>itemH(M.type,sortL(M.items.find(l=>keyOf(l)===k))));
+  return [ST('Given:'),PL(exprH(M,0).replace(/<span class="br[^"]*">/g,'<span>')),
+   ST('Step 1: Rearrange the letters in each '+W+' in order.'),PL('= '+sorted.items.map(l=>itemH(M.type,l)).join(sep),'Commutative law: '+(M.type==='pos'?'A + B = B + A':'AB = BA')),
+   ST('Step 2: Identify the identical '+W+'s.'),PL(tw.map(t=>t+' appears twice').join(', ')),
+   ST('Step 3: Remove the repeated '+W+'s.'),PL('= '+finalH(M),'Idempotent law: '+(M.type==='pos'?'X · X = X':'X + X = X')),
+   ST('Answer:'),PL(`<span class="fin">${finalH(M)}</span>`)].join('')}
+function paper3(){const n=LE.n,V=VARS(n),ON=LE.ones,sol=solveSOP(n,ON),rows=n===3?2:4,rh=n===3?['0','1']:GRAY2.map(x=>bits(x,2)),ch=GRAY2.map(x=>bits(x,2));
+  let k=`<table class="kmap"><tr><th>${n===3?'A\\BC':'AB\\CD'}</th>${ch.map(x=>`<th>${x}</th>`).join('')}</tr>`;for(let r=0;r<rows;r++){k+=`<tr><th>${rh[r]}</th>`;for(let c=0;c<4;c++){const m=cellM(n,r,c);const gs=sol.map((cb,i)=>cubeMins(cb).includes(m)?i:-1).filter(i=>i>=0);k+=`<td style="${gs.length?`background:color-mix(in srgb,var(--g${gs[0]+1}) 22%,transparent)`:''}">${ON.includes(m)?1:0}</td>`}k+='</tr>'}k+='</table>';
+  const out=[ST('Step 1: List the lines where the output is 1 (minterms).'),PL(`F(${V.join(', ')}) = Σm(${ON.join(', ')})`),
+   ST(`Step 2: Draw the ${1<<n}-box K-map (labels in Gray code 00, 01, 11, 10) and fill it.`),k,
+   ST('Step 3: Group the 1s (biggest groups first).')];
+  sol.forEach((c,i)=>out.push(PL(`Group ${i+1}: m${cubeMins(c).join(', m')}`,`${cubeMins(c).length} box${cubeMins(c).length>1?'es':''}`)));
+  out.push(ST('Step 4: Simplify each group (a variable that changes is eliminated).'));
+  sol.forEach((c,i)=>{const ms=cubeMins(c);const why=V.map((v,j)=>{const vals=[...new Set(ms.map(m=>bits(m,n)[j]))];return vals.length>1?`${v} changes`:`${v} = ${vals[0]}`}).join(', ');out.push(PL(`Group ${i+1}: ${why} → ${termHTML(c,V)}`))});
+  out.push(ST('Step 5: Write the final expression.'),PL(`<span class="fin">F = ${sopHTML(sol,V)}</span>`));return out.join('')}
+function paper4(){const LW=[['commutative','Commutative law'],['idempotent','Idempotent law: X + X = X'],['distributive','Distributive law'],['complement','Complement law: X + '+nb('X')+' = 1'],['identity','Identity law: X · 1 = X']];const lawShort=l=>LW.filter(([k])=>l.toLowerCase().includes(k)).map(x=>x[1]).join(', ');
+  return [ST('Given:'),PL('F = '+E.start),...E.steps.filter(s=>!/^Look for pairs/.test(s[0])&&!/^Action 1/.test(s[0])).map((s,i)=>ST(`Step ${i+1}:`)+PL('= '+s[2],lawShort(s[0]))),ST('Answer:'),PL(`<span class="fin">F = ${E.steps[E.steps.length-1][2]}</span>`)].join('')}
+paperBtn('pp2',paper2);paperBtn('pp3',paper3);paperBtn('pp4',paper4);
+// ---------- start ----------
+drawGate();drawTT();drawT();newTidy();buildL();drawL();drawSC();newK(3);drawEx();tab(store.get('q',0));
+</script>
+
+</body></html>
